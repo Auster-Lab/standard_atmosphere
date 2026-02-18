@@ -20,11 +20,11 @@ MAX_VALID_GEOMETRIC_ALTITUDE_M = 85638.0
 GEOPOTENTIAL_ALTITUDE_LAYERS_TEMPERATURE_GRADIENT_K_M = {
     0.0: -6.5e-3,
     11000.0: 0.0,
-    20000.0: 1.0e3,
-    32000.0: 2.8e3,
+    20000.0: 1.0e-3,
+    32000.0: 2.8e-3,
     47000.0: 0.0,
-    51000.0: -2.8e3,
-    71000.0: -2.0e3,
+    51000.0: -2.8e-3,
+    71000.0: -2.0e-3,
 }
 
 GEOPOTENTIAL_ALTITUDE_LAYERS_INITIAL_TEMPERATURE_K = {
@@ -99,6 +99,23 @@ def calculate_geometric_altitude(geopotential_altitude_m: float) -> float:
     return geometric_altitude_m
 
 
+def _get_base_altitude(geopotential_altitude_m: float) -> float:
+    """Finds the base altitude for the integration layer.
+
+    Args:
+        geopotential_altitude_m (float): geopotential altitude in meters.
+
+    Returns:
+        float: base altitude of the layer in meters.
+    """
+    base_altitude_m = 0.0
+    for altitude_m in GEOPOTENTIAL_ALTITUDE_LAYERS_TEMPERATURE_GRADIENT_K_M.keys():
+        if altitude_m > geopotential_altitude_m:
+            break
+        base_altitude_m = altitude_m
+    return base_altitude_m
+
+
 def calculate_std_atmos_temperature(geopotential_altitude_m: float) -> float:
     """Given a geopotential altitude in meters will calculate the standard atmosphere temperature
     for that altitude in Kelvin. Valid from 0m to 84500m of geopotential altitude.
@@ -110,11 +127,7 @@ def calculate_std_atmos_temperature(geopotential_altitude_m: float) -> float:
         float: standard atmosphere temperature in Kelvin.
     """
 
-    altitude_layers = GEOPOTENTIAL_ALTITUDE_LAYERS_TEMPERATURE_GRADIENT_K_M.keys()
-
-    for i, altitude_m in enumerate(altitude_layers):
-        if altitude_m > geopotential_altitude_m:
-            base_altitude_m = altitude_layers[i - 1]
+    base_altitude_m = _get_base_altitude(geopotential_altitude_m)
 
     H = geopotential_altitude_m
     H_b = base_altitude_m
@@ -137,11 +150,7 @@ def calculate_std_atmos_pressure(geopotential_altitude_m: float) -> float:
         float: standard atmosphere pressure in Pascals.
     """
 
-    altitude_layers = GEOPOTENTIAL_ALTITUDE_LAYERS_TEMPERATURE_GRADIENT_K_M.keys()
-
-    for i, altitude_m in enumerate(altitude_layers):
-        if altitude_m > geopotential_altitude_m:
-            base_altitude_m = altitude_layers[i - 1]
+    base_altitude_m = _get_base_altitude(geopotential_altitude_m)
 
     H = geopotential_altitude_m
     H_b = base_altitude_m
@@ -182,7 +191,7 @@ def calculate_std_atmos_density(
         float: standard atmosphere density in kg/m3
     """
 
-    std_pressure_pa = calculate_std_atmos_temperature(geopotential_altitude_m)
+    std_pressure_pa = calculate_std_atmos_pressure(geopotential_altitude_m)
     std_temperature_k = calculate_std_atmos_temperature(geopotential_altitude_m)
 
     P = std_pressure_pa
@@ -245,7 +254,7 @@ def calculate_std_atmos_sound_speed(
     M_0 = EARTH_STD_ATMOS_SEA_LEVEL_MEAN_MOLECULAR_WEIGHT_KG_KMOL
     gamma = IDEAL_GAS_GAMMA_RATIO
 
-    C_s = ((gamma * R * T_m) / M_0) ^ (1 / 2)
+    C_s = ((gamma * R * T_m) / M_0) ** (1 / 2)
 
     return C_s
 
